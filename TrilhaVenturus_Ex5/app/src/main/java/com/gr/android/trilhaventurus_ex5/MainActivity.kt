@@ -1,0 +1,122 @@
+package com.gr.android.trilhaventurus_ex5
+
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.os.AsyncTask
+import androidx.appcompat.app.AppCompatActivity
+import android.os.Bundle
+import android.util.Log
+import android.widget.Button
+import android.widget.EditText
+import android.widget.ImageView
+import android.widget.Toast
+import java.io.IOException
+import java.io.InputStream
+import java.net.URL
+import kotlin.jvm.Throws
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var imgDownloaded : ImageView
+    private lateinit var btnDownload : Button
+    private lateinit var edtUrl : EditText
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        imgDownloaded = findViewById(R.id.img_downloaded)
+        btnDownload = findViewById(R.id.btn_download)
+        edtUrl = findViewById(R.id.edt_picture)
+
+        Log.i("AsyncTask", "ONCREATE - All screen elements were created and processed. Thread: " +
+            Thread.currentThread().name)
+
+        btnDownload.setOnClickListener {
+            Log.i("AsyncTask", "CLICKLISTENER - Button was clicked. Thread: " +
+                Thread.currentThread().name)
+            callAsyncTask(edtUrl.text.toString())
+        }
+    }
+
+    private fun callAsyncTask(url: String) {
+        val download: DownloadTask = DownloadTask()
+
+        Log.i("AsyncTask", "CALLING TASK - Async being called. Thread: " +
+            Thread.currentThread().name)
+
+        download.execute(url)
+    }
+
+    private fun setImage(image: Bitmap?) {
+        image?.let {
+            imgDownloaded.setImageBitmap(image)
+        }
+    }
+
+    private fun showMessage(message: String?) {
+        message?.let {
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private inner class DownloadTask() : AsyncTask<String, Int, Bitmap>() {
+
+        override fun onPreExecute() {
+            Log.i("AsyncTask", "ONPREEXECUTED - Showing Toast onscreen. Thread: " +
+                    Thread.currentThread().name)
+            showMessage("Please wait! Downloading image...")
+        }
+
+        override fun doInBackground(vararg params: String?): Bitmap? {
+            var imageBitmap: Bitmap? = null
+
+            try {
+                Log.i("AsyncTask", "DOINBACK TRY - Downloading image. Thread: " +
+                    Thread.currentThread().name)
+                imageBitmap = downloadImage(params[0])
+                for (i in 0..2) {
+                    publishProgress((i * 100)/2, i)
+                }
+            } catch (e: IOException) {
+                Log.i("AsyncTask", "DOINBACK CATCH - " + e.message)
+            }
+
+            return imageBitmap
+        }
+
+        override fun onPostExecute(result: Bitmap?) {
+            if (result != null) {
+                setImage(result)
+                Log.i("AsyncTask", "INSIDE IF - Showing bitmap. Thread: " +
+                    Thread.currentThread().name)
+            } else {
+                Log.i("AsyncTask", "INSIDE ELSE - Error downloading image. Thread: " +
+                        Thread.currentThread().name)
+            }
+
+            Log.i("AsyncTask", "OUT OF IF - Ending PostExecute. Thread: " +
+                Thread.currentThread().name)
+        }
+
+        override fun onProgressUpdate(vararg values: Int?) {
+            showMessage("${values[1]} - ${values[0]}%")
+        }
+
+        @Throws(IOException::class)
+        fun downloadImage(url: String?) : Bitmap {
+            val urlAddress : URL
+            val inputStream : InputStream
+            val image : Bitmap
+
+            urlAddress = URL(url)
+            inputStream = urlAddress.openStream()
+            image = BitmapFactory.decodeStream(inputStream)
+
+            inputStream.close()
+
+            return image
+        }
+
+    }
+}
