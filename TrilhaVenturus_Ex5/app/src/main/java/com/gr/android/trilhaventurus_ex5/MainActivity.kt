@@ -88,15 +88,17 @@ class MainActivity : AppCompatActivity() {
                 Log.i("AsyncTask", "INSIDE NEW THREAD - New thread. Thread: " +
                         Thread.currentThread().name)
 
-                imageBitmap = downloadImage(url)
-
                 for (i in 0..2) {
-                    progress = (i * 100)/2
-                    
+
+                    Thread.sleep(2000)
+
                     Handler(Looper.getMainLooper()).post {
-                        showMessage("${progress.toString()}%")
+                        progress = (i * 100)/2
+                        showMessage("${progress}%")
                     }
                 }
+
+                imageBitmap = downloadImage(url)
 
             } catch (e: IOException) {
                 Log.i("AsyncTask", "DOINBACK CATCH - " + e.message)
