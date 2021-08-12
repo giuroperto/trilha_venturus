@@ -5,6 +5,8 @@ import android.graphics.BitmapFactory
 import android.os.AsyncTask
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.Button
 import android.widget.EditText
@@ -43,6 +45,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setImage(image: Bitmap?) {
+        Log.i("AsyncTask", "SETTING IMAGE. Thread: " +
+                Thread.currentThread().name)
         image?.let {
             imgDownloaded.setImageBitmap(image)
         }
@@ -59,6 +63,7 @@ class MainActivity : AppCompatActivity() {
                 Thread.currentThread().name)
 
         Thread {
+            Looper.prepare()
             Log.i("AsyncTask", "INSIDE NEW THREAD - New thread. Thread: " +
                     Thread.currentThread().name)
 //            showMessage("Please wait! Downloading image...")
@@ -73,10 +78,12 @@ class MainActivity : AppCompatActivity() {
         try {
             Log.i("AsyncTask", "DOINBACK TRY - Downloading image. Thread: " +
                     Thread.currentThread().name)
-            imageBitmap = downloadImage(url)
-            for (i in 0..2) {
-                progress = (i * 100)/2
-//                showMessage("${progress.toString()}%")
+//            Handler().post {
+                imageBitmap = downloadImage(url)
+                for (i in 0..2) {
+                    progress = (i * 100)/2
+//                    showMessage("${progress.toString()}%")
+//                }
             }
         } catch (e: IOException) {
             Log.i("AsyncTask", "DOINBACK CATCH - " + e.message)
@@ -102,7 +109,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun onPostExecuteStyle(result: Bitmap?) {
         if (result != null) {
-            setImage(result)
+            Handler().post() {
+                Log.i("AsyncTask", "INSIDE HANDLER. Thread: " +
+                        Thread.currentThread().name)
+                setImage(result)
+            }
             Log.i("AsyncTask", "INSIDE IF - Showing bitmap. Thread: " +
                     Thread.currentThread().name)
         } else {
