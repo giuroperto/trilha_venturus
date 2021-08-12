@@ -23,7 +23,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var imgDownloaded : ImageView
     private lateinit var btnDownload : Button
     private lateinit var edtUrl : EditText
-    private lateinit var queuedWork: ExecutorService
+    private lateinit var queuedWork: ThreadPoolExecutor
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,7 +33,12 @@ class MainActivity : AppCompatActivity() {
         btnDownload = findViewById(R.id.btn_download)
         edtUrl = findViewById(R.id.edt_picture)
 
-        queuedWork = Executors.newSingleThreadExecutor()
+        queuedWork = ThreadPoolExecutor(1,
+            1,
+            5 * 6 * 1000L,
+            TimeUnit.MICROSECONDS,
+            LinkedBlockingDeque<Runnable>()
+        )
 
         Log.i("AsyncTask", "ONCREATE - All screen elements were created and processed. Thread: " +
             Thread.currentThread().name)
@@ -66,10 +71,6 @@ class MainActivity : AppCompatActivity() {
         Log.i("AsyncTask", "CALLING NEW THREAD - New Thread being called. Thread: " +
                 Thread.currentThread().name)
 
-//      Looper.prepare()
-        Log.i("AsyncTask", "INSIDE NEW THREAD - New thread. Thread: " +
-                Thread.currentThread().name)
-
         showMessage("Please wait! Downloading image...")
 
         doInBackgroundStyle(url)
@@ -79,32 +80,48 @@ class MainActivity : AppCompatActivity() {
         var imageBitmap: Bitmap? = null
         var progress: Int = 0
 
-        try {
-            Log.i("AsyncTask", "DOINBACK TRY - Downloading image. Thread: " +
-                    Thread.currentThread().name)
-            imageBitmap = downloadImage(url).get()
-            for (i in 0..2) {
-                progress = (i * 100)/2
-                showMessage("${progress.toString()}%")
+        queuedWork.execute {
+            try {
+                Log.i("AsyncTask", "DOINBACK TRY - Downloading image. Thread: " +
+                        Thread.currentThread().name)
+
+                Log.i("AsyncTask", "INSIDE NEW THREAD - New thread. Thread: " +
+                        Thread.currentThread().name)
+
+                imageBitmap = downloadImage(url)
+
+                for (i in 0..2) {
+                    progress = (i * 100)/2
+                    
+                    Handler(Looper.getMainLooper()).post {
+                        showMessage("${progress.toString()}%")
+                    }
+                }
+
+            } catch (e: IOException) {
+                Log.i("AsyncTask", "DOINBACK CATCH - " + e.message)
             }
-        } catch (e: IOException) {
-            Log.i("AsyncTask", "DOINBACK CATCH - " + e.message)
+
+            Handler(Looper.getMainLooper()).post {
+                onPostExecuteStyle(imageBitmap)
+            }
         }
 
-        downloadImage(url).get()
-
-        onPostExecuteStyle(imageBitmap)
     }
 
     @Throws(IOException::class)
-    private fun downloadImage(url: String?) : Future<Bitmap> {
-        return queuedWork.submit {
-            val urlAddress : URL = URL(url)
-            val inputStream : InputStream = urlAddress.openStream()
-            val image : Bitmap = BitmapFactory.decodeStream(inputStream)
-            inputStream.close()
-            return image
-        }
+    private fun downloadImage(url: String?) : Bitmap {
+
+        Log.i("AsyncTask", "INSIDE DOWNLOAD IMAGE. Thread: " +
+                Thread.currentThread().name)
+
+        val urlAddress = URL(url)
+        val inputStream : InputStream = urlAddress.openStream()
+        val image : Bitmap = BitmapFactory.decodeStream(inputStream)
+
+        inputStream.close()
+
+        return image
     }
 
     private fun onPostExecuteStyle(result: Bitmap?) {
@@ -122,6 +139,8 @@ class MainActivity : AppCompatActivity() {
         Log.i("AsyncTask", "OUT OF IF - Ending PostExecute. Thread: " +
                 Thread.currentThread().name)
     }
+
+//    ----------------------------------------- OLD ASYNC ----------------------------------------
 
     private fun callAsyncTask(url: String) {
         val download: DownloadTask = DownloadTask()
