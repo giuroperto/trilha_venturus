@@ -15,6 +15,9 @@ import android.widget.Toast
 import java.io.IOException
 import java.io.InputStream
 import java.net.URL
+import java.util.concurrent.LinkedBlockingDeque
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 import kotlin.jvm.Throws
 
 class MainActivity : AppCompatActivity() {
@@ -22,6 +25,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var imgDownloaded : ImageView
     private lateinit var btnDownload : Button
     private lateinit var edtUrl : EditText
+    private lateinit var queuedWork: ThreadPoolExecutor
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,6 +34,12 @@ class MainActivity : AppCompatActivity() {
         imgDownloaded = findViewById(R.id.img_downloaded)
         btnDownload = findViewById(R.id.btn_download)
         edtUrl = findViewById(R.id.edt_picture)
+
+        queuedWork = ThreadPoolExecutor(1,
+            1,
+            5 * 60 * 1000L,
+            TimeUnit.MICROSECONDS,
+            LinkedBlockingDeque<Runnable>())
 
         Log.i("AsyncTask", "ONCREATE - All screen elements were created and processed. Thread: " +
             Thread.currentThread().name)
@@ -62,13 +72,17 @@ class MainActivity : AppCompatActivity() {
         Log.i("AsyncTask", "CALLING NEW THREAD - New Thread being called. Thread: " +
                 Thread.currentThread().name)
 
-        Thread {
+        queuedWork.execute {
             Looper.prepare()
             Log.i("AsyncTask", "INSIDE NEW THREAD - New thread. Thread: " +
                     Thread.currentThread().name)
-//            showMessage("Please wait! Downloading image...")
+
+            Handler().post {
+                showMessage("Please wait! Downloading image...")
+            }
+
             doInBackgroundStyle(url)
-        }.start()
+        }
     }
 
     private fun doInBackgroundStyle(url: String) {
@@ -78,12 +92,14 @@ class MainActivity : AppCompatActivity() {
         try {
             Log.i("AsyncTask", "DOINBACK TRY - Downloading image. Thread: " +
                     Thread.currentThread().name)
-//            Handler().post {
-                imageBitmap = downloadImage(url)
-                for (i in 0..2) {
-                    progress = (i * 100)/2
-//                    showMessage("${progress.toString()}%")
-//                }
+            imageBitmap = downloadImage(url)
+            for (i in 0..2) {
+                progress = (i * 100)/2
+
+                Handler().post {
+                    showMessage("${progress.toString()}%")
+                }
+
             }
         } catch (e: IOException) {
             Log.i("AsyncTask", "DOINBACK CATCH - " + e.message)
