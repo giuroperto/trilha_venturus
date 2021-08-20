@@ -19,7 +19,7 @@ class MainActivity : AppCompatActivity() {
 
         val onClickListener = ItemClickListener {
             song ->
-            Toast.makeText(this, "Song:  ${ song.song.toString() }", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Song:  ${ song.song }", Toast.LENGTH_SHORT).show()
         }
 
         val adapter = SongsAdapter(SongsList().fetchSongs(), onClickListener)
